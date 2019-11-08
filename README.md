@@ -1,68 +1,92 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Mini Redux
 
-## Available Scripts
+This is a simple example showing how to create a similar API to modern Redux using only React built-in hooks.
 
-In the project directory, you can run:
+## Run locally
 
-### `yarn start`
+1. Clone this repo and `cd` into the directory
+1. Run `npm install`
+1. Run `npm start`
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## How it works
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+### Creating our state
 
-### `yarn test`
+We use React's `useReducer` hook to manage our state globally. This gives us back our state object and a `dispatch` function for updating the state.
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```js
+const initialState = {}
 
-### `yarn build`
+function reducer(state, action) {
+  switch (action.type) {
+    case default:
+      return state
+  }
+}
+```
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Our `initalState` is a normal object. Our `reducer` is a Redux-style reducer function that takes our state and an action object as arguments, and returns the new state value.
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+### Providing state
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+We want to avoid passing the state and `dispatch` as props, as we could need them in a very deep component. So we'll use React context to make them accessible to any component anywhere in the tree.
 
-### `yarn eject`
+It's a good idea to pass the state and `dispatch` separately, for performance reasons. `dispatch` will never change, which means a component that _only_ accesses it will not update needlessly. If we passed state and `dispatch` together then every component would update when the state changed, even if it didn't access the state.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```js
+function App() {
+  const [state, dispatch] = React.useReducer(reducer, initialState);
+  return (
+    <StateProvider value={state}>
+      <DispatchProvider value={dispatch}>
+        {/* our components */}
+      </DispatchProvider>
+    </StateProvider>
+  );
+}
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Accessing state
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+We can access state using the `useSelector` hook provided by `"./not-redux.js"`. It works like the Redux hook, taking a selector function that receives the whole state object and returns just the bit you need.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+```js
+import { useSelector } from "./not-redux";
 
-## Learn More
+function Thing() {
+  const example = useSelector(state => state.example);
+  return <div>{example}</div>;
+}
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Under-the-hood this hook grabs the whole state object from context, calls your selector with it, then returns the result.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```js
+function useSelector(selector) {
+  const state = React.useContext(StateContext);
+  const slice = selector(state);
+  return slice;
+}
+```
 
-### Code Splitting
+### Updating state
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
+We can update state by getting the `dispatch` function from context with the `useDispatch` hook. It returns the `dispatch` function from `React.useReducer`.
 
-### Analyzing the Bundle Size
+```js
+import { useDispatch } from "./not-redux";
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
+function Update() {
+  const dispatch = useDispatch();
+  return <button onClick={() => dispatch({ type: "do_thing" })}>Update</button>;
+}
+```
 
-### Making a Progressive Web App
+Under-the-hood this hook just gets `dispatch` from context and returns it.
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `yarn build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+```js
+function useDispatch() {
+  const dispatch = React.useContext(DispatchContext);
+  return dispatch;
+}
+```
